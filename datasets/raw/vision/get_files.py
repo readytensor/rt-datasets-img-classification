@@ -1,8 +1,13 @@
 import os
+import shutil
 import requests
 import concurrent.futures
-import sys
 import time
+
+BASE_URL = 'https://lesc.dinfo.unifi.it/VISION/dataset/'
+SAVE_PATH = 'data'
+FOLDER_MAP_FILE = 'folder_map.txt'
+
 
 def is_image_file(line):
     """ Check if the line represents an image file. """
@@ -70,16 +75,39 @@ def process_folder_map(file_path, base_url, save_path, max_files=500):
                 print(f"Error downloading {url}: {e}")
 
 
-if __name__ == "__main__":
-    BASE_URL = 'https://lesc.dinfo.unifi.it/VISION/dataset/'
-    SAVE_PATH = 'data'
-    FOLDER_MAP_FILE = 'folder_map.txt'
+def clear_data_folders(dir_path: str) -> None:
+    """
+    Creates the data directory if it does not exist and clears its contents if it does.
 
-    
+    Args:
+        dir_path (str): The path to directory where the data should be downloaded.
+
+    """
+    # Check if the directory exists
+    if os.path.exists(dir_path):
+        # Remove the directory and its contents, then recreate the directory
+        shutil.rmtree(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
+        print(f"Cleared {dir_path} directory.")
+    else:
+        # If the directory does not exist, create it
+        os.makedirs(dir_path, exist_ok=True)
+        print(f"Created {dir_path} directory.")
+
+
+def download_vision_data(max_files=500):
+    """ Download the vision data from the specified URL. """
+    # Create the data directory if it does not exist
+    clear_data_folders(SAVE_PATH)
+
+    # Download the vision data
     start_time = time.time()  # Start timer
-    max_files = 50000
-    process_folder_map(FOLDER_MAP_FILE, BASE_URL, SAVE_PATH, max_files=50000)
-
+    process_folder_map(FOLDER_MAP_FILE, BASE_URL, SAVE_PATH, max_files=max_files)
     end_time = time.time()  # End timer
     elapsed_time = end_time - start_time
-    print(f"Time taken for {max_files} files: {elapsed_time / 60:.2f} minutes")
+    print(f"Time taken: {elapsed_time / 60:.2f} minutes")
+
+
+if __name__ == "__main__":    
+    max_files = 50000
+    download_vision_data(max_files=max_files)
