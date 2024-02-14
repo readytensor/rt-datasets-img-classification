@@ -10,6 +10,7 @@ PROCESSED_VISION_DIR = "../../processed/vision"
 
 def get_file_names_and_labels():
     class_labels = [i for i in os.listdir(DATA_DIR) if i.lower().startswith("d")]
+    class_labels = sorted(class_labels)
 
     X = []
     y = []
@@ -27,6 +28,7 @@ def get_file_names_and_labels():
                 if i.lower().endswith(".jpg") or i.lower().endswith(".jpeg")
             ]
             images_files_paths = [os.path.join(path, i) for i in images_files_names]
+            images_files_paths = sorted(images_files_paths)
 
             X.extend(images_files_paths)
             y += [label] * len(images_files_paths)
