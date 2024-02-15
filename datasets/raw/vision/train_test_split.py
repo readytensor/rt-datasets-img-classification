@@ -76,9 +76,9 @@ if __name__ == "__main__":
     X_test, y_test = add_image_variations(X_test, y_test)
 
     for file_path, label in tqdm(zip(X_train, y_train), desc="Moving train files..."):
-        move_file(file_path=file_path, split_name="train", class_label=label)
+        move_file(file_path=file_path, split_name="training", class_label=label)
 
     for file_path, label in tqdm(zip(X_test, y_test), desc="Moving test files..."):
-        move_file(file_path=file_path, split_name="test", class_label=label)
+        move_file(file_path=file_path, split_name="testing", class_label=label)
 
     create_split_json_file(X_train, X_test)
