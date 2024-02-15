@@ -10,6 +10,12 @@ DATA_DIR = os.path.join(paths.RAW_DIR, "vision", "data")
 PROCESSED_VISION_DIR = os.path.join(paths.PROCESSED_DIR, "vision")
 TRAIN_TEST_SPLIT_FILE = os.path.join(paths.RAW_DIR, "vision", "train_test_split.json")
 
+VALIDATION_SIZE = 0.1
+
+# (2/9 = 0.222) We are using this fraction when we are creating the test split after already subtracting the validation set from it
+# This will result in the test set having 20% of the original data
+TEST_SIZE = 2 / 9
+
 
 def is_segment_in_path(segment, path):
     """
@@ -95,10 +101,11 @@ def add_image_variations(X, y):
     return X, y
 
 
-def create_split_json_file(X_train, X_test):
+def create_split_json_file(X_train, X_valid, X_test):
     train_files = [Path(i).name for i in X_train]
+    validation_files = [Path(i).name for i in X_valid]
     test_files = [Path(i).name for i in X_test]
-    data = {"train": train_files, "test": test_files}
+    data = {"train": train_files, "validation": validation_files, "test": test_files}
     with open(TRAIN_TEST_SPLIT_FILE, "w") as file:
         json.dump(data, file)
 
@@ -115,17 +122,27 @@ if __name__ == "__main__":
 
     X, y = get_file_names_and_labels()
 
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X, y, test_size=VALIDATION_SIZE, stratify=y, random_state=42
+    )
+
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=42
+        X_train, y_train, test_size=TEST_SIZE, stratify=y_train, random_state=42
     )
 
     X_train, y_train = add_image_variations(X_train, y_train)
+    X_valid, y_valid = add_image_variations(X_valid, y_valid)
     X_test, y_test = add_image_variations(X_test, y_test)
 
     for file_path, label in tqdm(zip(X_train, y_train), desc="Moving train files..."):
         move_file(file_path=file_path, split_name="training", class_label=label)
 
+    for file_path, label in tqdm(
+        zip(X_valid, y_valid), desc="Moving validation files..."
+    ):
+        move_file(file_path=file_path, split_name="validation", class_label=label)
+
     for file_path, label in tqdm(zip(X_test, y_test), desc="Moving test files..."):
         move_file(file_path=file_path, split_name="testing", class_label=label)
 
-    create_split_json_file(X_train, X_test)
+    create_split_json_file(X_train, X_valid, X_test)
