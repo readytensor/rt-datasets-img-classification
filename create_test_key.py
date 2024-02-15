@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import paths
+from pathlib import Path
 
 
 def list_paths(root_dir):
@@ -19,7 +21,7 @@ def get_test_keys_for_dataset(dataset_path):
     test_path = os.path.join(dataset_path, "testing")
     test_labels_dirs = list_paths(test_path)
     for path in test_labels_dirs:
-        label = path.split("/")[-1]
+        label = Path(path).name
         file_names = os.listdir(path)
         test_keys = {k: label for k in file_names}
         final_test_keys.update(test_keys)
@@ -39,7 +41,7 @@ def create_datasets_test_keys(dataset_paths):
             labels.append(label)
 
         test_keys_df = pd.DataFrame({"id": ids, "target": labels})
-        dataset_name = path.split("/")[-1]
+        dataset_name = Path(path).name
         file_name = f"{dataset_name}_test_key.csv"
         save_path = os.path.join(path, file_name)
         test_keys_df.to_csv(save_path, index=False)
@@ -47,7 +49,7 @@ def create_datasets_test_keys(dataset_paths):
 
 
 if __name__ == "__main__":
-    PROCESSED_DIR_PATH = "./datasets/processed"
+    PROCESSED_DIR_PATH = paths.PROCESSED_DIR
     dataset_names = [i for i in os.listdir(PROCESSED_DIR_PATH) if i != ".DS_Store"]
     dataset_paths = [os.path.join(PROCESSED_DIR_PATH, i) for i in dataset_names]
 

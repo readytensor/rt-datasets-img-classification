@@ -1,11 +1,58 @@
 import os
 import json
 import shutil
+import paths
 from tqdm import tqdm
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = "./data"
-PROCESSED_VISION_DIR = "../../processed/vision"
+DATA_DIR = os.path.join(paths.RAW_DIR, "vision", "data")
+PROCESSED_VISION_DIR = os.path.join(paths.PROCESSED_DIR, "vision")
+TRAIN_TEST_SPLIT_FILE = os.path.join(paths.RAW_DIR, "vision", "train_test_split.json")
+
+
+def is_segment_in_path(segment, path):
+    """
+    Check if the specified segment is a part of the given path.
+
+    Parameters:
+    - segment (str): The directory segment to check.
+    - path (str): The full path to check against.
+
+    Returns:
+    - bool: True if the segment is part of the path, False otherwise.
+    """
+    # Create a Path object for the path
+    path_obj = Path(path)
+
+    # Iterate through each part of the path to check if the segment exists
+    return segment in path_obj.parts
+
+
+def replace_segment_in_path(original_path, old_segment, new_segment):
+    """
+    Replace an old segment with a new segment in the given path.
+
+    Parameters:
+    - original_path (str): The original path as a string.
+    - old_segment (str): The path segment to be replaced.
+    - new_segment (str): The new segment to replace the old one.
+
+    Returns:
+    - str: The modified path with the segment replaced.
+    """
+    # Break down the original path into its components
+    parts = list(Path(original_path).parts)
+
+    # Replace the old segment with the new segment where found
+    modified_parts = [new_segment if part == old_segment else part for part in parts]
+
+    # Reconstruct the path from the modified parts
+    # Use Path() to handle different OS path separators automatically
+    modified_path = Path(*modified_parts)
+
+    # Convert the Path object back to a string representation
+    return str(modified_path)
 
 
 def get_file_names_and_labels():
@@ -39,9 +86,9 @@ def get_file_names_and_labels():
 def add_image_variations(X, y):
     variations = ["natFBH", "natFBL", "natWA"]
     for img_path, label in zip(X, y):
-        if "/nat/" in img_path:
+        if is_segment_in_path("nat", img_path):
             for v in variations:
-                variation_path = img_path.replace("/nat/", f"/{v}/")
+                variation_path = replace_segment_in_path(img_path, "nat", v)
                 variation_path = variation_path.replace("_nat_", f"_{v}_")
                 X.append(variation_path)
                 y.append(label)
@@ -49,10 +96,10 @@ def add_image_variations(X, y):
 
 
 def create_split_json_file(X_train, X_test):
-    train_files = [os.path.join(i.split("/")[2], i.split("/")[5]) for i in X_train]
-    test_files = [os.path.join(i.split("/")[2], i.split("/")[5]) for i in X_test]
+    train_files = [Path(i).name for i in X_train]
+    test_files = [Path(i).name for i in X_test]
     data = {"train": train_files, "test": test_files}
-    with open("train_test_split.json", "w") as file:
+    with open(TRAIN_TEST_SPLIT_FILE, "w") as file:
         json.dump(data, file)
 
     print("train_test_split.json created successfully!")

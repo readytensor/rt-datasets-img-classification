@@ -4,3 +4,4 @@ tmp/
 training/
 testing/
 .DS_Store
+__pycache__/
