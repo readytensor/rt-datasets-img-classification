@@ -16,6 +16,8 @@ VALIDATION_SIZE = 0.1
 # This will result in the test set having 20% of the original data
 TEST_SIZE = 2 / 9
 
+ai_generated_dir_names = ["D36_Photoshop_Generative"]
+
 
 def is_segment_in_path(segment, path):
     """
@@ -61,19 +63,22 @@ def replace_segment_in_path(original_path, old_segment, new_segment):
     return str(modified_path)
 
 
-def get_file_names_and_labels():
-    class_labels = [i for i in os.listdir(DATA_DIR) if i.lower().startswith("d")]
-    class_labels = sorted(class_labels)
+def get_file_names_and_labels(sub_directories, exclude=[], include=[]):
+    if include:
+        class_labels = sorted(include)
+    else:
+        class_labels = [i for i in os.listdir(DATA_DIR) if i.lower().startswith("d")]
+        class_labels = sorted(class_labels)
 
     X = []
     y = []
 
     for label in class_labels:
+        if label in exclude:
+            continue
         images_dir_path = os.path.join(DATA_DIR, label, "images")
 
-        sub_dirs = ["flat", "nat"]
-
-        sub_dirs_paths = [os.path.join(images_dir_path, i) for i in sub_dirs]
+        sub_dirs_paths = [os.path.join(images_dir_path, i) for i in sub_directories]
         for path in sub_dirs_paths:
             images_files_names = [
                 i
@@ -96,8 +101,9 @@ def add_image_variations(X, y):
             for v in variations:
                 variation_path = replace_segment_in_path(img_path, "nat", v)
                 variation_path = variation_path.replace("_nat_", f"_{v}_")
-                X.append(variation_path)
-                y.append(label)
+                if os.path.exists(variation_path):
+                    X.append(variation_path)
+                    y.append(label)
     return X, y
 
 
@@ -118,9 +124,28 @@ def move_file(file_path, split_name, class_label):
     shutil.move(file_path, destination_path)
 
 
+def rename_images(X):
+    new_paths = []
+    for i, path in enumerate(X):
+        image_name = Path(path).name
+        new_path = path.replace(image_name, f"{str(i)}.jpg")
+        os.rename(path, new_path)
+        new_paths.append(new_path)
+    return new_paths
+
+
 if __name__ == "__main__":
 
-    X, y = get_file_names_and_labels()
+    X, y = get_file_names_and_labels(["flat", "nat"], exclude=ai_generated_dir_names)
+
+    X_ai, y_ai = get_file_names_and_labels(
+        ["flat", "nat", "natFBH", "natFBL", "natWA"], include=ai_generated_dir_names
+    )
+
+    X_ai = rename_images(X_ai)
+
+    X.extend(X_ai)
+    y.extend(y_ai)
 
     X_train, X_valid, y_train, y_valid = train_test_split(
         X, y, test_size=VALIDATION_SIZE, stratify=y, random_state=42
