@@ -50,7 +50,7 @@ def create_datasets_test_keys(dataset_paths):
 
 if __name__ == "__main__":
     PROCESSED_DIR_PATH = paths.PROCESSED_DIR
-    dataset_names = [i for i in os.listdir(PROCESSED_DIR_PATH) if i != ".DS_Store"]
+    dataset_names = [i for i in os.listdir(PROCESSED_DIR_PATH) if i != ".DS_Store" and i != "cub_200_2011" and i != "vision"]
     dataset_paths = [os.path.join(PROCESSED_DIR_PATH, i) for i in dataset_names]
 
     create_datasets_test_keys(dataset_paths)
