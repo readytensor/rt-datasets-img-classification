@@ -6,10 +6,10 @@ from tqdm import tqdm
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = os.path.join(paths.RAW_DIR, "CUB-200-2011", "data", "CUB_200_2011", "images")
-PROCESSED_DIR = os.path.join(paths.PROCESSED_DIR, "CUB-200-2011")
+DATA_DIR = os.path.join(paths.RAW_DIR, "cub_200_2011", "data", "cub_200_2011", "images")
+PROCESSED_DIR = os.path.join(paths.PROCESSED_DIR, "cub_200_2011")
 TRAIN_TEST_SPLIT_FILE = os.path.join(
-    paths.RAW_DIR, "CUB-200-2011", "train_test_split.json"
+    paths.RAW_DIR, "cub_200_2011", "train_test_split.json"
 )
 
 TEST_SIZE = 0.2
