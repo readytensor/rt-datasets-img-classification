@@ -1,22 +1,27 @@
 import os
 import json
 import shutil
-import paths
+# import paths
 from tqdm import tqdm
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = os.path.join(paths.RAW_DIR, "vision", "data")
-PROCESSED_VISION_DIR = os.path.join(paths.PROCESSED_DIR, "vision")
-TRAIN_TEST_SPLIT_FILE = os.path.join(paths.RAW_DIR, "vision", "train_test_split.json")
+from utils import get_file_names_and_labels, AI_GENERATED_DIR_NAMES
+
+RAW_DIR = os.path.join(".", "..", "..", "raw")
+PROCESSED_DIR = os.path.join(".", "..", "..", "processed")
+
+DATA_DIR = os.path.join(RAW_DIR, "vision", "data")
+PROCESSED_VISION_DIR = os.path.join(PROCESSED_DIR, "vision")
+TRAIN_TEST_SPLIT_FILE = os.path.join(RAW_DIR, "vision", "train_test_split.json")
 
 VALIDATION_SIZE = 0.1
 
-# (2/9 = 0.222) We are using this fraction when we are creating the test split after already subtracting the validation set from it
+# (2/9 = 0.222) We are using this fraction when we are creating the test split after already
+# subtracting the validation set from it.
 # This will result in the test set having 20% of the original data
+# effectively, we get 70%/10%/20% split for train/valid/test.
 TEST_SIZE = 2 / 9
-
-ai_generated_dir_names = ["D36_Photoshop_Generative"]
 
 
 def is_segment_in_path(segment, path):
@@ -63,35 +68,7 @@ def replace_segment_in_path(original_path, old_segment, new_segment):
     return str(modified_path)
 
 
-def get_file_names_and_labels(sub_directories, exclude=[], include=[]):
-    if include:
-        class_labels = sorted(include)
-    else:
-        class_labels = [i for i in os.listdir(DATA_DIR) if i.lower().startswith("d")]
-        class_labels = sorted(class_labels)
 
-    X = []
-    y = []
-
-    for label in class_labels:
-        if label in exclude:
-            continue
-        images_dir_path = os.path.join(DATA_DIR, label, "images")
-
-        sub_dirs_paths = [os.path.join(images_dir_path, i) for i in sub_directories]
-        for path in sub_dirs_paths:
-            images_files_names = [
-                i
-                for i in os.listdir(path)
-                if i.lower().endswith(".jpg") or i.lower().endswith(".jpeg")
-            ]
-            images_files_paths = [os.path.join(path, i) for i in images_files_names]
-            images_files_paths = sorted(images_files_paths)
-
-            X.extend(images_files_paths)
-            y += [label] * len(images_files_paths)
-
-    return X, y
 
 
 def add_image_variations(X, y):
@@ -124,25 +101,47 @@ def move_file(file_path, split_name, class_label):
     shutil.move(file_path, destination_path)
 
 
-def rename_images(X):
-    new_paths = []
-    for i, path in enumerate(X):
-        image_name = Path(path).name
-        new_path = path.replace(image_name, f"{str(i)}.jpg")
-        os.rename(path, new_path)
-        new_paths.append(new_path)
-    return new_paths
+def copy_file(file_path, split_name, class_label):
+    destination_path = f"{PROCESSED_VISION_DIR}/{split_name}/{class_label}"
+    os.makedirs(destination_path, exist_ok=True)
+    shutil.copy(file_path, destination_path)
+
+
+
+
+def clear_data_folders(base_dir: str) -> None:
+    """
+    Clears the contents of the training and testing directories within the specified base directory.
+
+    Args:
+        base_dir (str): The path to the base directory containing 'training' and 'testing' subdirectories.
+
+    Returns:
+        None: This function does not return a value but clears specified directories.
+    """
+    for dataset_type in ['training', 'testing']:
+        dir_path = os.path.join(base_dir, dataset_type)
+        # Check if the directory exists
+        if os.path.exists(dir_path):
+            # Remove the directory and its contents, then recreate the directory
+            shutil.rmtree(dir_path)
+            os.makedirs(dir_path, exist_ok=True)
+            print(f"Cleared {dataset_type} directory.")
+        else:
+            # If the directory does not exist, create it
+            os.makedirs(dir_path, exist_ok=True)
+            print(f"Created {dataset_type} directory.")
+
+
 
 
 if __name__ == "__main__":
 
-    X, y = get_file_names_and_labels(["flat", "nat"], exclude=ai_generated_dir_names)
+    X, y = get_file_names_and_labels(["flat", "nat"], exclude=AI_GENERATED_DIR_NAMES)
 
     X_ai, y_ai = get_file_names_and_labels(
-        ["flat", "nat", "natFBH", "natFBL", "natWA"], include=ai_generated_dir_names
+        ["flat", "nat", "natFBH", "natFBL", "natWA"], include=AI_GENERATED_DIR_NAMES
     )
-
-    X_ai = rename_images(X_ai)
 
     X.extend(X_ai)
     y.extend(y_ai)
@@ -159,15 +158,16 @@ if __name__ == "__main__":
     X_valid, y_valid = add_image_variations(X_valid, y_valid)
     X_test, y_test = add_image_variations(X_test, y_test)
 
-    for file_path, label in tqdm(zip(X_train, y_train), desc="Moving train files..."):
-        move_file(file_path=file_path, split_name="training", class_label=label)
+    # clear processed folders
+    clear_data_folders(PROCESSED_VISION_DIR)
 
-    for file_path, label in tqdm(
-        zip(X_valid, y_valid), desc="Moving validation files..."
-    ):
-        move_file(file_path=file_path, split_name="validation", class_label=label)
+    for file_path, label in tqdm(zip(X_train, y_train), desc="Copying train files..."):
+        copy_file(file_path=file_path, split_name="training", class_label=label)
 
-    for file_path, label in tqdm(zip(X_test, y_test), desc="Moving test files..."):
-        move_file(file_path=file_path, split_name="testing", class_label=label)
+    for file_path, label in tqdm(zip(X_valid, y_valid), desc="Copying validation files..."):
+        copy_file(file_path=file_path, split_name="validation", class_label=label)
+
+    for file_path, label in tqdm(zip(X_test, y_test), desc="Copying test files..."):
+        copy_file(file_path=file_path, split_name="testing", class_label=label)
 
     create_split_json_file(X_train, X_valid, X_test)

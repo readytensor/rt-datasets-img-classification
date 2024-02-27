@@ -109,5 +109,5 @@ def download_vision_data(max_files=500):
 
 
 if __name__ == "__main__":    
-    max_files = 50000
+    max_files = 500000 # this was used during testing of this script with a small number of files
     download_vision_data(max_files=max_files)
