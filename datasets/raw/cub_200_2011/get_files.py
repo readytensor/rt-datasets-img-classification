@@ -5,8 +5,8 @@ import paths
 from tqdm import tqdm
 
 url = "https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz?download=1"
-dataset_filename = "CUB_200_2011.tgz"
-download_location = os.path.join(paths.RAW_DIR, "CUB-200-2011", "data")
+dataset_filename = "cub_200_2011.tgz"
+download_location = os.path.join(paths.RAW_DIR, "cub_200_2011", "data")
 dataset_path = os.path.join(download_location, dataset_filename)
 extract_to_path = download_location
 
