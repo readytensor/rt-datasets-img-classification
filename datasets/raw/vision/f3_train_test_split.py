@@ -70,7 +70,6 @@ def replace_segment_in_path(original_path, old_segment, new_segment):
 
 
 
-
 def add_image_variations(X, y):
     variations = ["natFBH", "natFBL", "natWA"]
     for img_path, label in zip(X, y):
@@ -78,9 +77,8 @@ def add_image_variations(X, y):
             for v in variations:
                 variation_path = replace_segment_in_path(img_path, "nat", v)
                 variation_path = variation_path.replace("_nat_", f"_{v}_")
-                if os.path.exists(variation_path):
-                    X.append(variation_path)
-                    y.append(label)
+                X.append(variation_path)
+                y.append(label)
     return X, y
 
 
