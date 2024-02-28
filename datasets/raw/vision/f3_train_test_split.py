@@ -1,12 +1,11 @@
 import os
-import json
 import shutil
-# import paths
+import random
 from tqdm import tqdm
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-from utils import get_file_names_and_labels, AI_GENERATED_DIR_NAMES
+from utils import get_file_names_and_labels
 
 RAW_DIR = os.path.join(".", "..", "..", "raw")
 PROCESSED_DIR = os.path.join(".", "..", "..", "processed")
@@ -22,6 +21,8 @@ VALIDATION_SIZE = 0.1
 # This will result in the test set having 20% of the original data
 # effectively, we get 70%/10%/20% split for train/valid/test.
 TEST_SIZE = 2 / 9
+
+random.seed(42)
 
 
 def is_segment_in_path(segment, path):
@@ -68,8 +69,6 @@ def replace_segment_in_path(original_path, old_segment, new_segment):
     return str(modified_path)
 
 
-
-
 def add_image_variations(X, y):
     variations = ["natFBH", "natFBL", "natWA"]
     for img_path, label in zip(X, y):
@@ -80,17 +79,6 @@ def add_image_variations(X, y):
                 X.append(variation_path)
                 y.append(label)
     return X, y
-
-
-def create_split_json_file(X_train, X_valid, X_test):
-    train_files = [Path(i).name for i in X_train]
-    validation_files = [Path(i).name for i in X_valid]
-    test_files = [Path(i).name for i in X_test]
-    data = {"train": train_files, "validation": validation_files, "test": test_files}
-    with open(TRAIN_TEST_SPLIT_FILE, "w") as file:
-        json.dump(data, file)
-
-    print("train_test_split.json created successfully!")
 
 
 def move_file(file_path, split_name, class_label):
@@ -105,8 +93,6 @@ def copy_file(file_path, split_name, class_label):
     shutil.copy(file_path, destination_path)
 
 
-
-
 def clear_data_folders(base_dir: str) -> None:
     """
     Clears the contents of the training and testing directories within the specified base directory.
@@ -117,7 +103,7 @@ def clear_data_folders(base_dir: str) -> None:
     Returns:
         None: This function does not return a value but clears specified directories.
     """
-    for dataset_type in ['training', 'testing']:
+    for dataset_type in ["training", "testing"]:
         dir_path = os.path.join(base_dir, dataset_type)
         # Check if the directory exists
         if os.path.exists(dir_path):
@@ -131,18 +117,9 @@ def clear_data_folders(base_dir: str) -> None:
             print(f"Created {dataset_type} directory.")
 
 
-
-
 if __name__ == "__main__":
 
-    X, y = get_file_names_and_labels(["flat", "nat"], exclude=AI_GENERATED_DIR_NAMES)
-
-    X_ai, y_ai = get_file_names_and_labels(
-        ["flat", "nat", "natFBH", "natFBL", "natWA"], include=AI_GENERATED_DIR_NAMES
-    )
-
-    X.extend(X_ai)
-    y.extend(y_ai)
+    X, y = get_file_names_and_labels()
 
     X_train, X_valid, y_train, y_valid = train_test_split(
         X, y, test_size=VALIDATION_SIZE, stratify=y, random_state=42
@@ -162,10 +139,10 @@ if __name__ == "__main__":
     for file_path, label in tqdm(zip(X_train, y_train), desc="Copying train files..."):
         copy_file(file_path=file_path, split_name="training", class_label=label)
 
-    for file_path, label in tqdm(zip(X_valid, y_valid), desc="Copying validation files..."):
+    for file_path, label in tqdm(
+        zip(X_valid, y_valid), desc="Copying validation files..."
+    ):
         copy_file(file_path=file_path, split_name="validation", class_label=label)
 
     for file_path, label in tqdm(zip(X_test, y_test), desc="Copying test files..."):
         copy_file(file_path=file_path, split_name="testing", class_label=label)
-
-    create_split_json_file(X_train, X_valid, X_test)
