@@ -1,9 +1,20 @@
+"""
+This script is used to create the train_test_split.json file for the Vision dataset.
+It was used to verify that we get the same splits when the script is re-run.
+
+Also, the contents of the JSON file (actual splits) can be compared with the contents of the 
+CSV file (original intended splits). 
+"""
+
 import os
 import json
 from pathlib import Path
 
-RAW_DIR = os.path.join(".", "..", "..", "raw")
-PROCESSED_DIR = os.path.join(".", "..", "..", "processed")
+
+from constants import (
+    RAW_DIR,
+    PROCESSED_VISION_DIR
+)
 
 
 def list_jpg_paths(directory):
@@ -23,24 +34,26 @@ def file_info(file_path):
     return file_name, upper_dir
 
 
-if __name__ == "__main__":
-    RAW_DATA_DIR = os.path.join(RAW_DIR, "vision")
-    PROCESSED_DATA_DIR = os.path.join(PROCESSED_DIR, "vision")
-    file_paths = list_jpg_paths(PROCESSED_DATA_DIR)
+def generate_data_split_file():
+    file_paths = list_jpg_paths(PROCESSED_VISION_DIR)
     files_info = [file_info(file) for file in file_paths]
 
-    data = {"train": [], "validation": [], "test": []}
+    data = {"training": [], "validation": [], "testing": []}
 
     for file, dir in files_info:
         if dir == "training":
-            data["train"].append(file)
+            data["training"].append(file)
         elif dir == "validation":
             data["validation"].append(file)
         elif dir == "testing":
-            data["test"].append(file)
+            data["testing"].append(file)
 
-    json_file_path = os.path.join(RAW_DATA_DIR, "train_test_split.json")
+    json_file_path = os.path.join(RAW_DIR, "vision", "train_test_split.json")
     with open(json_file_path, "w") as file:
         json.dump(data, file)
 
     print("train_test_split.json created successfully")
+
+
+if __name__ == "__main__":
+    generate_data_split_file()

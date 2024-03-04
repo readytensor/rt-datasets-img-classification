@@ -1,28 +1,64 @@
+"""
+This script is used to generate the train, validation and test splits for the Vision data.
+
+For images in "nat", "natFBH", "natFBL", and "natWA" - we ensured that the original image 
+from "nat" and its three variations in "natFBH", "natFBL", "natWA" are always retained 
+within the same split. This is done to avoid training data leakage into validation and testing 
+splits.
+
+The images in "flat" are split randomly into three sets (i.e. there is no special handling
+for them). 
+"""
+
 import os
 import shutil
 import random
-from tqdm import tqdm
 from pathlib import Path
+
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
-from utils import get_file_names_and_labels
-
-RAW_DIR = os.path.join(".", "..", "..", "raw")
-PROCESSED_DIR = os.path.join(".", "..", "..", "processed")
-
-DATA_DIR = os.path.join(RAW_DIR, "vision", "data")
-PROCESSED_VISION_DIR = os.path.join(PROCESSED_DIR, "vision")
-TRAIN_TEST_SPLIT_FILE = os.path.join(RAW_DIR, "vision", "train_test_split.json")
-
-VALIDATION_SIZE = 0.1
-
-# (2/9 = 0.222) We are using this fraction when we are creating the test split after already
-# subtracting the validation set from it.
-# This will result in the test set having 20% of the original data
-# effectively, we get 70%/10%/20% split for train/valid/test.
-TEST_SIZE = 2 / 9
+from constants import (
+    RAW_DATA_DIR,
+    PROCESSED_VISION_DIR,
+    VALIDATION_SIZE,
+    TEST_SIZE,
+    TRAIN_TEST_SPLIT_CSV_FILE
+)
 
 random.seed(42)
+
+
+def get_file_names_and_labels():
+    class_labels = [
+        i
+        for i in os.listdir(RAW_DATA_DIR)
+        if i.lower().startswith("d") or i.lower().startswith("g")
+    ]
+    class_labels = sorted(class_labels)
+
+    X = []
+    y = []
+
+    for label in class_labels:
+        images_dir_path = os.path.join(RAW_DATA_DIR, label, "images")
+
+        sub_dirs = ["flat", "nat"]
+
+        sub_dirs_paths = [os.path.join(images_dir_path, i) for i in sub_dirs]
+        for path in sub_dirs_paths:
+            images_files_names = [
+                i
+                for i in os.listdir(path)
+                if i.lower().endswith(".jpg") or i.lower().endswith(".jpeg")
+            ]
+            images_files_paths = [os.path.join(path, i) for i in images_files_names]
+            images_files_paths = sorted(images_files_paths)
+
+            X.extend(images_files_paths)
+            y += [label] * len(images_files_paths)
+
+    return X, y
 
 
 def is_segment_in_path(segment, path):
@@ -93,34 +129,47 @@ def copy_file(file_path, split_name, class_label):
     shutil.copy(file_path, destination_path)
 
 
-def clear_data_folders(base_dir: str) -> None:
+def clear_data_folders(base_dir: str, split_name: str) -> None:
     """
-    Clears the contents of the training and testing directories within the specified base directory.
+    Clears the contents of the training and testing directories within the specified base
+    directory.
 
     Args:
-        base_dir (str): The path to the base directory containing 'training' and 'testing' subdirectories.
+        base_dir (str): The path to the base directory containing 'training', 'validation'
+                        and 'testing' subdirectories.
+        split_name (str): Training, validation, or testing.
 
     Returns:
         None: This function does not return a value but clears specified directories.
     """
-    for dataset_type in ["training", "testing"]:
-        dir_path = os.path.join(base_dir, dataset_type)
-        # Check if the directory exists
-        if os.path.exists(dir_path):
-            # Remove the directory and its contents, then recreate the directory
-            shutil.rmtree(dir_path)
-            os.makedirs(dir_path, exist_ok=True)
-            print(f"Cleared {dataset_type} directory.")
-        else:
-            # If the directory does not exist, create it
-            os.makedirs(dir_path, exist_ok=True)
-            print(f"Created {dataset_type} directory.")
+    dir_path = os.path.join(base_dir, split_name)
+    # Check if the directory exists
+    if os.path.exists(dir_path):
+        # Remove the directory and its contents, then recreate the directory
+        shutil.rmtree(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
+        print(f"Cleared {split_name} directory.")
+    else:
+        # If the directory does not exist, create it
+        os.makedirs(dir_path, exist_ok=True)
+        print(f"Created {split_name} directory.")
 
 
-if __name__ == "__main__":
+def write_split_file_names_to_csv(X, y, type_, new_file=False):
+    open_type = "w" if new_file else "a"
+    with open(TRAIN_TEST_SPLIT_CSV_FILE, open_type) as file:
+        if new_file:
+            file.write("file_name,label,type\n")
+        for file_name_and_path, label in zip(X, y):
+            file_name = filename = os.path.basename(file_name_and_path)
+            file.write(f"{file_name},{label},{type_}\n")
 
+def create_train_valid_test_splits():
+
+    print("Reading image file names...")
     X, y = get_file_names_and_labels()
 
+    print("Performing train/valid/test splits of file names...")
     X_train, X_valid, y_train, y_valid = train_test_split(
         X, y, test_size=VALIDATION_SIZE, stratify=y, random_state=42
     )
@@ -133,16 +182,26 @@ if __name__ == "__main__":
     X_valid, y_valid = add_image_variations(X_valid, y_valid)
     X_test, y_test = add_image_variations(X_test, y_test)
 
-    # clear processed folders
-    clear_data_folders(PROCESSED_VISION_DIR)
+    splits = {
+        "training": (X_train, y_train),
+        "validation": (X_valid, y_valid),
+        "testing": (X_test, y_test),
+    }
 
-    for file_path, label in tqdm(zip(X_train, y_train), desc="Copying train files..."):
-        copy_file(file_path=file_path, split_name="training", class_label=label)
+    for split_name, (X, y) in splits.items():
+        # Save file names to CSV file
+        new_file = True if split_name == "training" else False
+        write_split_file_names_to_csv(X, y, split_name, new_file=new_file)
 
-    for file_path, label in tqdm(
-        zip(X_valid, y_valid), desc="Copying validation files..."
-    ):
-        copy_file(file_path=file_path, split_name="validation", class_label=label)
+        # clear processed folders
+        print(f"Clearing previous processed {split_name} data (if any)...")
+        clear_data_folders(PROCESSED_VISION_DIR, split_name)
 
-    for file_path, label in tqdm(zip(X_test, y_test), desc="Copying test files..."):
-        copy_file(file_path=file_path, split_name="testing", class_label=label)
+        for file_path, label in tqdm(zip(X, y), desc=f"Copying {split_name} files..."):
+            copy_file(file_path=file_path, split_name=split_name, class_label=label)
+
+    print("Train, valid, and test splits performed successfully.")
+
+
+if __name__ == "__main__":
+    create_train_valid_test_splits()

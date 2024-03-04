@@ -4,9 +4,7 @@ import requests
 import concurrent.futures
 import time
 
-BASE_URL = 'https://lesc.dinfo.unifi.it/VISION/dataset/'
-SAVE_PATH = 'data'
-FOLDER_MAP_FILE = 'folder_map.txt'
+from constants import BASE_URL, RAW_DATA_DIR, FOLDER_MAP_FILE
 
 
 def is_image_file(line):
@@ -98,11 +96,11 @@ def clear_data_folders(dir_path: str) -> None:
 def download_vision_data(max_files=500):
     """ Download the vision data from the specified URL. """
     # Create the data directory if it does not exist
-    clear_data_folders(SAVE_PATH)
+    clear_data_folders(RAW_DATA_DIR)
 
     # Download the vision data
     start_time = time.time()  # Start timer
-    process_folder_map(FOLDER_MAP_FILE, BASE_URL, SAVE_PATH, max_files=max_files)
+    process_folder_map(FOLDER_MAP_FILE, BASE_URL, RAW_DATA_DIR, max_files=max_files)
     end_time = time.time()  # End timer
     elapsed_time = end_time - start_time
     print(f"Time taken: {elapsed_time / 60:.2f} minutes")
