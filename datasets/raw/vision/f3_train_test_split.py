@@ -197,6 +197,7 @@ def create_train_valid_test_splits():
         print(f"Clearing previous processed {split_name} data (if any)...")
         clear_data_folders(PROCESSED_VISION_DIR, split_name)
 
+        # copy files into processed folders
         for file_path, label in tqdm(zip(X, y), desc=f"Copying {split_name} files..."):
             copy_file(file_path=file_path, split_name=split_name, class_label=label)
 
